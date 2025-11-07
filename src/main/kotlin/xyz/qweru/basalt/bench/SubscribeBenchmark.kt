@@ -1,32 +1,20 @@
 package xyz.qweru.basalt.bench
 
-import kotlinx.benchmark.Benchmark
-import kotlinx.benchmark.BenchmarkMode
-import kotlinx.benchmark.BenchmarkTimeUnit
-import kotlinx.benchmark.Mode
-import kotlinx.benchmark.OutputTimeUnit
-import kotlinx.benchmark.Scope
-import kotlinx.benchmark.Setup
-import kotlinx.benchmark.State
-import kotlinx.benchmark.TearDown
+import kotlinx.benchmark.*
 import xyz.qweru.basalt.EventBus
 import xyz.qweru.geo.core.event.Handler
 
 @State(Scope.Benchmark)
-@BenchmarkMode(Mode.All)
+@BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(BenchmarkTimeUnit.MILLISECONDS)
 class SubscribeBenchmark {
 
-    val eventBus = EventBus()
+    var eventBus = EventBus()
 
     @Benchmark
     fun bench() {
         eventBus.subscribe(SampleSubscriber)
-    }
-
-    @TearDown
-    fun clean() {
-        eventBus.unsubscribe(SampleSubscriber)
+        eventBus.unsubscribe(SampleSubscriber) // required due to silly jmh code
     }
 
     private object SampleSubscriber {

@@ -15,24 +15,28 @@ import kotlin.reflect.jvm.javaMethod
 
 class EventBus {
     /**
-     * Class containing handlers to a map of event classes to a list of their respective handlers \
+     * Class containing handlers to a map of event classes to a list of their respective handlers.
      * Event type references are stored as java classes, because the hashes of KClasses
-     * sourced from object::class and the KClasses sourced from reflection differ
+     * sourced from object::class and the KClasses sourced from reflection differ.
      */
     private val handlerCache = ConcurrentHashMap<KClass<out Any>, Reference2ReferenceOpenHashMap<Class<out Any>, ObjectArrayList<Handle>>>()
     private val handles = ConcurrentHashMap<Class<out Any>, CopyOnWriteArrayList<Handle>>()
 
     /**
      * Currently you cannot subscribe multiple instances of a class at the same time.
-     * This can be fixed by caching the `MethodHandle` directly, but this requires
-     * instantiation of a `Handle` on every subscribe, which is slower and currently not needed.
+     * This can be easily fixed, however the result is slower, and, since I don't need
+     * it, I've decided to not implement it.
      */
-    fun subscribe(obj: Any) {
-        scan(obj)
+    fun subscribe(obj: Any, forceRescan: Boolean = false) {
+        scan(obj, forceRescan)
+        var i = 0
         handlerCache[obj::class]?.forEach { event, handlersInObj ->
             val eventHandles = getHandles(event)
+            val init = eventHandles.size
             handlersInObj.forEach { addHandle(obj, it, eventHandles) }
+            i += eventHandles.size - init
         }
+        println("Subscribed $i handles")
     }
 
     private fun addHandle(obj: Any, thisHandle: Handle, list: CopyOnWriteArrayList<Handle>) {
@@ -45,17 +49,23 @@ class EventBus {
         list.add(i, thisHandle)
     }
 
-    private fun getHandles(event: Class<out Any>) = handles.computeIfAbsent(event) { CopyOnWriteArrayList() }
-
-    fun unsubscribe(obj: Any) {
-        for (infos in handles.values) {
-            // replacing this with a binary search based on the priority might be faster
-            infos.removeIf { it.instance == obj }
-        }
+    private fun getHandles(event: Class<out Any>) = handles.computeIfAbsent(event) { CopyOnWriteArrayList() }.also {
+        println("Handles: ${it.size}")
     }
 
-    fun scan(obj: Any) {
-        if (handlerCache.contains(obj::class)) return
+    fun unsubscribe(obj: Any) {
+        var i = 0
+        for (infos in handles.values) {
+            // replacing this with a binary search based on the priority might be faster
+            infos.removeIf { (it.instance == obj).also { b ->
+                if (b) i++
+            } }
+        }
+        println("Unsubscribed $i handles")
+    }
+
+    fun scan(obj: Any, forceRescan: Boolean = false) {
+        if (handlerCache.contains(obj::class) && !forceRescan) return
         val cache = Reference2ReferenceOpenHashMap<Class<out Any>, ObjectArrayList<Handle>>()
 
         for (function in obj::class.declaredMemberFunctions) {
@@ -93,7 +103,23 @@ class EventBus {
         return event
     }
 
-    private data class Handle(var instance: Any?, val func: MethodHandle, val priority: Int)
+    /**
+     * Clears all caches and handles
+     */
+    fun clear() {
+        handles.clear()
+        handlerCache.clear()
+    }
+
+    private data class Handle(var instance: Any?, val func: MethodHandle, val priority: Int) {
+        override fun equals(other: Any?): Boolean {
+            if (other is Handle && other.instance == instance)
+                return true
+            return super.equals(other)
+        }
+
+        override fun hashCode(): Int =  31 * (instance?.hashCode() ?: 0)
+    }
 
     private fun unwrap(kFunction: KFunction<*>): MethodHandle {
         return MethodHandles.lookup().unreflect(kFunction.javaMethod!!.also { it.isAccessible = true })

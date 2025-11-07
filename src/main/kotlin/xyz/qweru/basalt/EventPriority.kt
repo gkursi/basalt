@@ -1,4 +1,4 @@
-package xyz.qweru.geo.core.event
+package xyz.qweru.basalt
 
 object EventPriority {
     const val FIRST = Int.MAX_VALUE

@@ -12,7 +12,7 @@ import xyz.qweru.basalt.EventBus
 import xyz.qweru.geo.core.event.Handler
 
 @State(Scope.Benchmark)
-@BenchmarkMode(Mode.All)
+@BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(BenchmarkTimeUnit.MILLISECONDS)
 class SingleSubscriberBenchmark {
 
