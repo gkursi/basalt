@@ -1,5 +1,5 @@
 # Basalt
-Extremely fast event system made for kotlin ([~100ns/event handler on post, ~0.03ms/event handler on subscribe](./benchmark.MD)) 
+Extremely fast event system made for kotlin (~10ns/post) 
 
 ## Usage
 You can add this as a dependency via [Jitpack](https://jitpack.io/#gkursi/basalt)
